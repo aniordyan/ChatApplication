@@ -1,0 +1,23 @@
+# Lazarus and Free Pascal build files
+lib/
+backup/
+*.o
+*.ppu
+*.compiled
+*.bak
+*.exe
+*.dll
+*.so
+*.dcu
+*.cfg
+*.res
+*.dbg
+
+# Lazarus session / autosave
+*.lps
+*.or
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
