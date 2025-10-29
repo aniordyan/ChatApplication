@@ -1,29 +1,79 @@
 object Form1: TForm1
-  Left = 314
-  Height = 390
-  Top = 180
-  Width = 573
+  Left = 938
+  Height = 471
+  Top = 475
+  Width = 612
   Caption = 'Form1'
-  ClientHeight = 390
-  ClientWidth = 573
+  ClientHeight = 471
+  ClientWidth = 612
   LCLVersion = '3.0.0.3'
+  object port: TEdit
+    Left = 24
+    Height = 38
+    Top = 24
+    Width = 128
+    TabOrder = 0
+    Text = 'պորտ'
+    OnChange = portChange
+  end
+  object Edit1: TEdit
+    Left = 208
+    Height = 38
+    Top = 24
+    Width = 162
+    TabOrder = 1
+    Text = 'ip'
+    OnChange = Edit1Change
+  end
   object Label1: TLabel
-    Tag = 30
-    Left = 47
-    Height = 21
-    Top = 19
-    Width = 71
-    Caption = 'netcat gui'
-    OnClick = Label1Click
+    Left = 24
+    Height = 23
+    Top = 128
+    Width = 93
+    Caption = 'զրուցարան'
   end
   object Memo1: TMemo
-    Left = 54
-    Height = 90
-    Top = 78
-    Width = 150
+    Left = 24
+    Height = 132
+    Top = 164
+    Width = 568
     Lines.Strings = (
       'Memo1'
     )
-    TabOrder = 0
+    ScrollBars = ssVertical
+    TabOrder = 2
+    OnChange = Memo1Change
+  end
+  object Edit2: TEdit
+    Left = 24
+    Height = 38
+    Top = 348
+    Width = 568
+    TabOrder = 3
+    Text = 'նամակ'
+  end
+  object Button1: TButton
+    Left = 440
+    Height = 32
+    Top = 24
+    Width = 152
+    Caption = 'կպնել'
+    TabOrder = 4
+  end
+  object Button2: TButton
+    Left = 440
+    Height = 32
+    Top = 64
+    Width = 152
+    Caption = 'խզել'
+    TabOrder = 5
+  end
+  object Button3: TButton
+    Left = 24
+    Height = 32
+    Top = 408
+    Width = 152
+    Caption = 'ուղարկել'
+    TabOrder = 6
   end
 end
