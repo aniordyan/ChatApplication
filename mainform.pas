@@ -20,6 +20,8 @@ type
     Label1: TLabel;
     Memo1: TMemo;
     port: TEdit;
+    //Timer1: TTimer;
+    procedure FormCreate(Sender: TObject);
     procedure Edit1Change(Sender: TObject);
     procedure Memo1Change(Sender: TObject);
     procedure portChange(Sender: TObject);
@@ -43,6 +45,24 @@ implementation
 {$R *.lfm}
 
 { TForm1 }
+procedure TForm1.FormCreate(Sender: TObject);
+begin
+  // Initialize variables
+  FConnected := False;
+  FSocket := nil;
+
+  // Setup UI
+  Memo1.Clear;
+  Memo1.Lines.Add('Պատրաստ է կապվելու...');
+
+  // Set default values
+  Edit1.Text := '127.0.0.1';
+  port.Text := '8080';
+
+  // Disable disconnect and send buttons initially
+  Button2.Enabled := False;
+  Button3.Enabled := False;
+end;
 
 procedure TForm1.Label1Click(Sender: TObject);
 begin
@@ -54,6 +74,7 @@ var
   Host: string;
   PortToConnect: Integer;
 begin
+
    if not FConnected then
   begin
     Host := Edit1.Text;  // IP field
@@ -66,6 +87,7 @@ begin
     begin
       FConnected := True;
       Memo1.Lines.Add('Connected to ' + Host + ':' + IntToStr(PortToConnect));
+      Application.ProcessMessages;
     end
     else
     begin
