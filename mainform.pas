@@ -9,6 +9,18 @@ uses
 
 type
 
+  { TReceiverThread - Background thread for receiving data }
+  TReceiverThread = class(TThread)
+  private
+    FSocket: TTCPBlockSocket;
+    FReceivedData: string;
+    procedure UpdateMemo;
+  protected
+    procedure Execute; override;
+  public
+    constructor Create(ASocket: TTCPBlockSocket);
+  end;
+
   { TForm1 }
 
   TForm1 = class(TForm)
@@ -22,6 +34,7 @@ type
     port: TEdit;
     //Timer1: TTimer;
     procedure FormCreate(Sender: TObject);
+    procedure FormDestroy(Sender: TObject);
     procedure Edit1Change(Sender: TObject);
     procedure Memo1Change(Sender: TObject);
     procedure portChange(Sender: TObject);
@@ -32,6 +45,7 @@ type
   private
     FSocket: TTCPBlockSocket;  // The socket object
     FConnected: Boolean;        // Connection state
+    FReceiverThread: TReceiverThread;
 
   public
 
@@ -44,12 +58,58 @@ implementation
 
 {$R *.lfm}
 
+{ TReceiverThread }
+
+constructor TReceiverThread.Create(ASocket: TTCPBlockSocket);
+begin
+  inherited Create(False);  // Create not suspended
+  FreeOnTerminate := True;  // Auto-free when done
+  FSocket := ASocket;
+end;
+
+procedure TReceiverThread.Execute;
+var
+  ReceivedLine: string;
+begin
+  while not Terminated do
+  begin
+    // Wait for data with timeout (1 second)
+    ReceivedLine := FSocket.RecvString(1000);
+
+    // Check if data was received
+    if (FSocket.LastError = 0) and (ReceivedLine <> '') then
+    begin
+      FReceivedData := ReceivedLine;
+      Synchronize(@UpdateMemo);  // Safely update GUI
+    end
+    else if FSocket.LastError <> 0 then
+    begin
+      // Connection lost or error
+      if FSocket.LastError <> WSAETIMEDOUT then  // Ignore timeout errors
+      begin
+        FReceivedData := 'Կապը խզվեց: ' + FSocket.LastErrorDesc;
+        Synchronize(@UpdateMemo);
+        Break;  // Exit thread
+      end;
+    end;
+
+    Sleep(10);  // Small delay to reduce CPU usage
+  end;
+end;
+
+procedure TReceiverThread.UpdateMemo;
+begin
+  // This runs in main thread - safe to update GUI
+  Form1.Memo1.Lines.Add('◄ Ստացված: ' + FReceivedData);
+end;
+
 { TForm1 }
 procedure TForm1.FormCreate(Sender: TObject);
 begin
   // Initialize variables
   FConnected := False;
   FSocket := nil;
+  FReceiverThread := nil;
 
   // Setup UI
   Memo1.Clear;
@@ -87,6 +147,7 @@ begin
     begin
       FConnected := True;
       Memo1.Lines.Add('Connected to ' + Host + ':' + IntToStr(PortToConnect));
+      FReceiverThread := TReceiverThread.Create(FSocket);
       Application.ProcessMessages;
     end
     else
@@ -103,7 +164,31 @@ begin
 end;
 
 procedure TForm1.Button3Click(Sender: TObject);
+var
+  Message: string;
 begin
+  if not FConnected then
+  begin
+    Memo1.Lines.Add('Սխալ: Կապ չկա։');
+    Exit;
+  end;
+
+  Message := Edit2.Text;
+
+  if Message = '' then Exit;
+
+  // Send the message with newline
+  FSocket.SendString(Message + #13#10);
+
+  if FSocket.LastError = 0 then
+  begin
+    Memo1.Lines.Add('Ուղարկված: ' + Message);
+    Edit2.Clear;
+  end
+  else
+  begin
+    Memo1.Lines.Add('Սխալ: ' + FSocket.LastErrorDesc);
+  end;
 
 end;
 
@@ -120,6 +205,23 @@ end;
 procedure TForm1.Memo1Change(Sender: TObject);
 begin
 
+end;
+
+procedure TForm1.FormDestroy(Sender: TObject);
+begin
+  // Stop receiver thread if running
+  if Assigned(FReceiverThread) then
+  begin
+    FReceiverThread.Terminate;
+    FReceiverThread := nil;
+  end;
+
+  // Close socket if open
+  if Assigned(FSocket) then
+  begin
+    FSocket.Free;
+    FSocket := nil;
+  end;
 end;
 
 end.
