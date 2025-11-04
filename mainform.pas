@@ -5,50 +5,76 @@ unit MainForm;
 interface
 
 uses
-  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, blcksock, synsock, ExtCtrls;
+  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls,
+  blcksock, synsock; // tcp/ip library
 
 type
+  TForm1 = class;
 
-  { TReceiverThread - Background thread for receiving data }
+ type    //recieve data, append to memo
   TReceiverThread = class(TThread)
   private
     FSocket: TTCPBlockSocket;
-    FReceivedData: string;
-    procedure UpdateMemo;
+    FMemo: TMemo;
+    FBuf: string;
+    FLines: TStringList;
+    procedure AppendLines;
+  public
+    constructor Create(ASocket: TTCPBlockSocket; AMemo: TMemo);
+    destructor Destroy; override;
+    procedure Execute; override;      //main
+  end;
+
+
+  { TAcceptorThread }
+  type
+  TAcceptorThread = class(TThread)
+  private
+    FListenSock: TTCPBlockSocket;
+    FPort: string;
+    FOwner: TForm1;
+    FAcceptedSock: TTCPBlockSocket;  // <— add this
+    procedure SyncAccepted;          // <— add this
   protected
     procedure Execute; override;
   public
-    constructor Create(ASocket: TTCPBlockSocket);
+    constructor Create(APort: string; AOwner: TForm1);
+    destructor Destroy; override;
+    procedure StopListening;
   end;
 
-  { TForm1 }
 
+  { TForm1 }
   TForm1 = class(TForm)
-    Button1: TButton;
-    Button2: TButton;
-    Button3: TButton;
-    Edit1: TEdit;
-    Edit2: TEdit;
+    Panel1: TPanel;
+    Panel2: TPanel;
     Label1: TLabel;
-    Memo1: TMemo;
-    port: TEdit;
-    //Timer1: TTimer;
+    Label3: TLabel;
+    port: TEdit;      // client port
+    port2: TEdit;     // listen port
+    Edit1: TEdit;     // remote IP
+    Memo1: TMemo;     // messages
+    Edit2: TEdit;     // message input
+    Button1: TButton; // Connect (կպնել)
+    Button3: TButton; // Send (ուղարկել)
+    Button5: TButton; // Start Listening (լսել)
+    Button6: TButton; // Stop/Disconnect (խզել)
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
-    procedure Edit1Change(Sender: TObject);
-    procedure Memo1Change(Sender: TObject);
-    procedure portChange(Sender: TObject);
-    procedure Label1Click(Sender: TObject);
-    procedure Button1Click(Sender: TObject);
-    procedure Button2Click(Sender: TObject);
-    procedure Button3Click(Sender: TObject);
+    procedure Button1Click(Sender: TObject); // Connect
+    procedure Button3Click(Sender: TObject); // Send
+    procedure Button5Click(Sender: TObject); // Start Listening
+    procedure Button6Click(Sender: TObject); // Stop/Disconnect
   private
-    FSocket: TTCPBlockSocket;  // The socket object
-    FConnected: Boolean;        // Connection state
-    FReceiverThread: TReceiverThread;
-
+    FClientSock: TTCPBlockSocket; // active connected socket (client or accepted)
+    FRecvThread: TReceiverThread;
+    FAcceptor: TAcceptorThread;
+    procedure Log(const S: string);
+    procedure StartReceiver(ASocket: TTCPBlockSocket);
+    procedure OnAccepted(ASocket: TTCPBlockSocket);
+    procedure CloseActiveSocket;
+    function IsConnected: Boolean;
   public
-
   end;
 
 var
@@ -58,170 +84,282 @@ implementation
 
 {$R *.lfm}
 
+function TForm1.IsConnected: Boolean;
+begin
+  Result := Assigned(FClientSock) and (FClientSock.Socket <> INVALID_SOCKET);
+end;
+
+
 { TReceiverThread }
 
-constructor TReceiverThread.Create(ASocket: TTCPBlockSocket);
+constructor TReceiverThread.Create(ASocket: TTCPBlockSocket; AMemo: TMemo);
 begin
-  inherited Create(False);  // Create not suspended
-  FreeOnTerminate := True;  // Auto-free when done
+  inherited Create(False);     //start thread
+  FreeOnTerminate := True;
   FSocket := ASocket;
+  FMemo := AMemo;
+  FBuf := '';
+  FLines := TStringList.Create;
+end;
+
+destructor TReceiverThread.Destroy;
+begin
+  FLines.Free;
+  inherited Destroy;
+end;
+
+procedure TReceiverThread.AppendLines;
+var
+  i: Integer;
+begin
+  for i := 0 to FLines.Count - 1 do
+    if FLines[i] <> '' then
+      FMemo.Lines.Add('[ուրվական] ' + FLines[i]);
 end;
 
 procedure TReceiverThread.Execute;
 var
-  ReceivedLine: string;
+  chunk, line: string;
+  p: SizeInt;
 begin
   while not Terminated do
   begin
-    // Wait for data with timeout (1 second)
-    ReceivedLine := FSocket.RecvString(1000);
+    // wait until there is data to read, timeout every 100
+    if FSocket.CanRead(100) then
+    begin
+      chunk := FSocket.RecvPacket(100);
 
-    // Check if data was received
-    if (FSocket.LastError = 0) and (ReceivedLine <> '') then
-    begin
-      FReceivedData := ReceivedLine;
-      Synchronize(@UpdateMemo);  // Safely update GUI
-    end
-    else if FSocket.LastError <> 0 then
-    begin
-      // Connection lost or error
-      if FSocket.LastError <> WSAETIMEDOUT then  // Ignore timeout errors
+      if FSocket.LastError <> 0 then
+        Break;
+
+      if chunk <> '' then
       begin
-        FReceivedData := 'Կապը խզվեց: ' + FSocket.LastErrorDesc;
-        Synchronize(@UpdateMemo);
-        Break;  // Exit thread
+        // if we got data, buffer and split lines
+        FBuf := FBuf + chunk;
+        FLines.Clear;
+
+        // CRLF to LF
+        FBuf := StringReplace(FBuf, #13#10, #10, [rfReplaceAll]);
+
+        while True do
+        begin
+          p := Pos(#10, FBuf);
+          if p = 0 then Break;
+          line := Copy(FBuf, 1, p - 1);
+          Delete(FBuf, 1, p); // remove line + LF
+          FLines.Add(line);
+        end;
+
+        if FLines.Count > 0 then
+          Synchronize(@AppendLines);
       end;
     end;
-
-    Sleep(10);  // Small delay to reduce CPU usage
   end;
 end;
 
-procedure TReceiverThread.UpdateMemo;
+
+{ TAcceptorThread }
+
+constructor TAcceptorThread.Create(APort: string; AOwner: TForm1);
 begin
-  // This runs in main thread - safe to update GUI
-  Form1.Memo1.Lines.Add('◄ Ստացված: ' + FReceivedData);
+  inherited Create(False);
+  FreeOnTerminate := False;
+  FPort := APort;
+  FOwner := AOwner;
+  FListenSock := TTCPBlockSocket.Create;
 end;
+
+destructor TAcceptorThread.Destroy;
+begin
+  if Assigned(FListenSock) then
+    FListenSock.Free;
+  inherited Destroy;
+end;
+
+procedure TAcceptorThread.StopListening;
+begin
+  Terminate;
+  try
+    if Assigned(FListenSock) then
+      FListenSock.CloseSocket;
+  except end;
+end;
+
+procedure TAcceptorThread.Execute;
+var
+  s: TSocket;
+  clientSock: TTCPBlockSocket;
+begin
+  try
+    FListenSock.CreateSocket;
+    FListenSock.SetLinger(True, 1000);
+    FListenSock.Bind('0.0.0.0', FPort);
+    FListenSock.Listen;
+    FOwner.Log('Listening on port ' + FPort);
+
+    while not Terminated do
+    begin
+      if FListenSock.CanRead(1000) then
+      begin
+        s := FListenSock.Accept; // returns TSocket
+        if s <> INVALID_SOCKET then
+        begin
+          clientSock := TTCPBlockSocket.Create;
+          clientSock.Socket := s;
+
+          // pass to ui
+          FAcceptedSock := clientSock;
+          Synchronize(@SyncAccepted);
+          // now form have the socket
+        end;
+      end;
+      Sleep(1);
+    end;
+  except
+    on E: Exception do
+      FOwner.Log('Listener error: ' + E.Message);
+  end;
+  FOwner.Log('Listener stopped');
+end;
+
+
+procedure TAcceptorThread.SyncAccepted;
+begin
+  // socket to form
+  FOwner.OnAccepted(FAcceptedSock);
+  FAcceptedSock := nil;
+end;
+
 
 { TForm1 }
+
 procedure TForm1.FormCreate(Sender: TObject);
 begin
-  // Initialize variables
-  FConnected := False;
-  FSocket := nil;
-  FReceiverThread := nil;
-
-  // Setup UI
-  Memo1.Clear;
-  Memo1.Lines.Add('Պատրաստ է կապվելու...');
-
-  // Set default values
-  Edit1.Text := '127.0.0.1';
-  port.Text := '8080';
-
-  // Disable disconnect and send buttons initially
-  Button2.Enabled := False;
-  Button3.Enabled := False;
-end;
-
-procedure TForm1.Label1Click(Sender: TObject);
-begin
-
-end;
-
-procedure TForm1.Button1Click(Sender: TObject);
-var
-  Host: string;
-  PortToConnect: Integer;
-begin
-
-   if not FConnected then
-  begin
-    Host := Edit1.Text;  // IP field
-    PortToConnect := StrToIntDef(port.Text, 8080);  // Port field
-
-    FSocket := TTCPBlockSocket.Create;
-    FSocket.Connect(Host, IntToStr(PortToConnect));
-
-    if FSocket.LastError = 0 then
-    begin
-      FConnected := True;
-      Memo1.Lines.Add('Connected to ' + Host + ':' + IntToStr(PortToConnect));
-      FReceiverThread := TReceiverThread.Create(FSocket);
-      Application.ProcessMessages;
-    end
-    else
-    begin
-      Memo1.Lines.Add('Error: ' + FSocket.LastErrorDesc);
-      FSocket.Free;
-    end;
-  end;
-end;
-
-procedure TForm1.Button2Click(Sender: TObject);
-begin
-
-end;
-
-procedure TForm1.Button3Click(Sender: TObject);
-var
-  Message: string;
-begin
-  if not FConnected then
-  begin
-    Memo1.Lines.Add('Սխալ: Կապ չկա։');
-    Exit;
-  end;
-
-  Message := Edit2.Text;
-
-  if Message = '' then Exit;
-
-  // Send the message with newline
-  FSocket.SendString(Message + #13#10);
-
-  if FSocket.LastError = 0 then
-  begin
-    Memo1.Lines.Add('Ուղարկված: ' + Message);
-    Edit2.Clear;
-  end
-  else
-  begin
-    Memo1.Lines.Add('Սխալ: ' + FSocket.LastErrorDesc);
-  end;
-
-end;
-
-procedure TForm1.portChange(Sender: TObject);
-begin
-
-end;
-
-procedure TForm1.Edit1Change(Sender: TObject);
-begin
-
-end;
-
-procedure TForm1.Memo1Change(Sender: TObject);
-begin
-
+  FClientSock := nil;
+  FRecvThread := nil;
+  FAcceptor := nil;
+  Memo1.Lines.Clear;
+  Memo1.Lines.Add('զրուցարան');
 end;
 
 procedure TForm1.FormDestroy(Sender: TObject);
 begin
-  // Stop receiver thread if running
-  if Assigned(FReceiverThread) then
+  if Assigned(FAcceptor) then
   begin
-    FReceiverThread.Terminate;
-    FReceiverThread := nil;
+    FAcceptor.StopListening;
+    FAcceptor.WaitFor;
+    FreeAndNil(FAcceptor);
   end;
+  CloseActiveSocket;
+end;
 
-  // Close socket if open
-  if Assigned(FSocket) then
+procedure TForm1.Log(const S: string);
+begin
+  Memo1.Lines.Add(S);
+end;
+
+procedure TForm1.StartReceiver(ASocket: TTCPBlockSocket);
+begin
+  if Assigned(FRecvThread) then
   begin
-    FSocket.Free;
-    FSocket := nil;
+    FRecvThread.Terminate;
+    FRecvThread.WaitFor;
+    FRecvThread := nil;
   end;
+  FRecvThread := TReceiverThread.Create(ASocket, Memo1);
+end;
+
+procedure TForm1.OnAccepted(ASocket: TTCPBlockSocket);
+begin
+  // take socket, start recieving
+  CloseActiveSocket;
+  FClientSock := ASocket;
+  Log('ստացած՝ ' + FClientSock.GetRemoteSinIP + ':' + IntToStr(FClientSock.GetRemoteSinPort));
+  StartReceiver(FClientSock);
+end;
+
+procedure TForm1.CloseActiveSocket;
+begin
+  if Assigned(FRecvThread) then
+  begin
+    FRecvThread.Terminate;
+    FRecvThread.WaitFor;
+    FRecvThread := nil;
+  end;
+  if Assigned(FClientSock) then
+  begin
+    try FClientSock.CloseSocket; except end;
+    FreeAndNil(FClientSock);
+  end;
+end;
+
+procedure TForm1.Button5Click(Sender: TObject); // start Listening
+begin
+  if Assigned(FAcceptor) then
+  begin
+    Log('լսում է՝');
+    Exit;
+  end;
+  FAcceptor := TAcceptorThread.Create(Trim(port2.Text), Self);
+  Log('սկսել լսել՝');
+end;
+
+procedure TForm1.Button6Click(Sender: TObject); // stop
+begin
+  if Assigned(FAcceptor) then
+  begin
+    FAcceptor.StopListening;
+    FAcceptor.WaitFor;
+    FreeAndNil(FAcceptor);
+  end;
+  CloseActiveSocket;
+  Log('ստոպ');
+end;
+
+procedure TForm1.Button1Click(Sender: TObject); // connect
+begin
+  CloseActiveSocket;
+  FClientSock := TTCPBlockSocket.Create;
+  try
+    FClientSock.Connect(Trim(Edit1.Text), Trim(port.Text));
+    if FClientSock.LastError = 0 then
+    begin
+      Log('կպնել՝ ' + Trim(Edit1.Text) + ':' + Trim(port.Text));
+      StartReceiver(FClientSock);
+    end
+    else
+    begin
+      Log('կապը չստացվեց՝ ' + IntToStr(FClientSock.LastError));
+      FreeAndNil(FClientSock);
+    end;
+  except
+    on E: Exception do
+    begin
+      Log('exception: ' + E.Message);
+      FreeAndNil(FClientSock);
+    end;
+  end;
+end;
+
+procedure TForm1.Button3Click(Sender: TObject); // send
+var
+  msg: string;
+begin
+  msg := Trim(Edit2.Text);
+  if msg = '' then Exit;
+
+  if IsConnected then
+  begin
+    FClientSock.SendString(msg + #13#10);
+    if FClientSock.LastError = 0 then
+      Log('[ես] ' + msg)
+    else
+      Log('error: ' + IntToStr(FClientSock.LastError));
+  end
+  else
+    Log('կապ չկա');
+
+  Edit2.Text := '';
 end;
 
 end.
