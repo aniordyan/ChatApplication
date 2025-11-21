@@ -1,35 +1,54 @@
 object Form1: TForm1
-  Left = 609
-  Height = 488
-  Top = 232
-  Width = 788
+  Left = 613
+  Height = 564
+  Top = 321
+  Width = 895
   Caption = 'Form1'
-  ClientHeight = 488
-  ClientWidth = 788
-  OnClick = Button3Click
+  ClientHeight = 564
+  ClientWidth = 895
   OnCreate = FormCreate
   OnDestroy = FormDestroy
   LCLVersion = '3.0.0.3'
   object Panel1: TPanel
-    Left = 8
-    Height = 192
-    Top = 32
-    Width = 288
-    ClientHeight = 192
-    ClientWidth = 288
-    TabOrder = 6
+    Left = 16
+    Height = 424
+    Top = 88
+    Width = 392
+    ClientHeight = 424
+    ClientWidth = 392
+    TabOrder = 5
+    object Button1: TButton
+      Left = 88
+      Height = 25
+      Top = 8
+      Width = 35
+      Caption = '+'
+      TabOrder = 0
+      OnClick = Button1Click
+    end
     object Label1: TLabel
-      Left = 8
+      Left = 0
       Height = 23
-      Top = 16
-      Width = 70
-      Caption = 'կպնելիք'
+      Top = 8
+      Width = 65
+      Caption = 'տնեցիք'
+      OnClick = Label1Click
+    end
+    object lstBuddies: TListBox
+      Left = 8
+      Height = 360
+      Top = 48
+      Width = 376
+      ItemHeight = 0
+      TabOrder = 1
+      TopIndex = -1
+      OnDblClick = lstBuddiesDblClick
     end
   end
   object port: TEdit
-    Left = 16
+    Left = 224
     Height = 38
-    Top = 128
+    Top = 32
     Width = 186
     TabOrder = 0
     Text = 'պորտ'
@@ -37,15 +56,15 @@ object Form1: TForm1
   object Edit1: TEdit
     Left = 16
     Height = 38
-    Top = 80
+    Top = 32
     Width = 184
     TabOrder = 1
     Text = 'ip'
   end
   object Memo1: TMemo
-    Left = 328
+    Left = 424
     Height = 310
-    Top = 32
+    Top = 88
     Width = 448
     Lines.Strings = (
       'Memo1'
@@ -54,71 +73,56 @@ object Form1: TForm1
     TabOrder = 2
   end
   object Edit2: TEdit
-    Left = 328
+    Left = 424
     Height = 38
-    Top = 352
+    Top = 424
     Width = 448
     TabOrder = 3
     Text = 'նամակ'
   end
-  object Button1: TButton
-    Left = 16
-    Height = 32
-    Top = 176
-    Width = 188
-    Caption = 'կպնել'
-    TabOrder = 4
-    OnClick = Button1Click
-  end
   object Button3: TButton
-    Left = 328
+    Left = 424
     Height = 32
-    Top = 400
+    Top = 480
     Width = 152
     Caption = 'ուղարկել'
-    TabOrder = 5
+    TabOrder = 4
     OnClick = Button3Click
   end
-  object Panel2: TPanel
-    Left = 8
-    Height = 192
-    Top = 256
-    Width = 288
-    ClientHeight = 192
-    ClientWidth = 288
-    TabOrder = 7
-    object Label3: TLabel
-      Left = 8
-      Height = 23
-      Top = 16
-      Width = 49
-      Caption = 'լսելիք'
-    end
+  object Button2: TButton
+    Left = 424
+    Height = 25
+    Top = 32
+    Width = 75
+    Caption = 'կպնել'
+    TabOrder = 6
+    OnClick = Button2Click
   end
-  object port2: TEdit
-    Left = 16
-    Height = 38
-    Top = 304
-    Width = 186
-    TabOrder = 8
-    Text = 'պորտ'
+  object Button4: TButton
+    Left = 512
+    Height = 25
+    Top = 32
+    Width = 75
+    Caption = 'խզել'
+    TabOrder = 7
+    OnClick = Button4Click
   end
   object Button5: TButton
-    Left = 16
-    Height = 32
-    Top = 360
-    Width = 188
+    Left = 600
+    Height = 25
+    Top = 32
+    Width = 72
     Caption = 'լսել'
-    TabOrder = 9
+    TabOrder = 8
     OnClick = Button5Click
   end
   object Button6: TButton
-    Left = 16
-    Height = 32
-    Top = 400
-    Width = 188
-    Caption = 'խզել'
-    TabOrder = 10
+    Left = 160
+    Height = 25
+    Top = 96
+    Width = 35
+    Caption = '-'
+    TabOrder = 9
     OnClick = Button6Click
   end
 end

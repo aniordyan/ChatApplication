@@ -44,6 +44,11 @@
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="MainForm"/>
       </Unit>
+      <Unit>
+        <Filename Value="ubuddies.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="uBuddies"/>
+      </Unit>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
