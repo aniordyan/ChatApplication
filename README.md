@@ -84,10 +84,9 @@ Double-clicking a buddy attempts to connect automatically.
 ## Project Structure
 
 ```
-src/
-    mainform.pas          Main GUI and networking logic
-    uBuddies.pas          Buddy manager
-    netcatGui.lpi         Lazarus project file
+mainform.pas          Main GUI and networking logic
+uBuddies.pas          Buddy manager
+netcatGui.lpi         Lazarus project file
 buddies.conf              Saved contacts file
 README.md                 Project documentation
 ```
