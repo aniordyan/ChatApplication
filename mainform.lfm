@@ -1,10 +1,10 @@
 object Form1: TForm1
   Left = 683
-  Height = 564
+  Height = 581
   Top = 213
   Width = 895
   Caption = 'Form1'
-  ClientHeight = 564
+  ClientHeight = 581
   ClientWidth = 895
   OnCreate = FormCreate
   OnDestroy = FormDestroy
@@ -124,5 +124,18 @@ object Form1: TForm1
     Caption = '-'
     TabOrder = 9
     OnClick = Button6Click
+  end
+  object Shape1: TShape
+    Left = 31
+    Height = 2
+    Top = 540
+    Width = 832
+  end
+  object Label2: TLabel
+    Left = 176
+    Height = 24
+    Top = 544
+    Width = 558
+    Caption = 'made by nuwanda (ﾉ◕ヮ◕)ﾉ*:・ﾟ✧ with passion and hatred towards humanity'
   end
 end

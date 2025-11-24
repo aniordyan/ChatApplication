@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls,
-  Sockets, BaseUnix, IniFiles, uBuddies; // use FPC networking units
+  Sockets, BaseUnix, IniFiles, uBuddies, Buttons; // use FPC networking units
 
 type
   TForm1 = class;
@@ -55,6 +55,7 @@ type
 
   { TForm1 }
   TForm1 = class(TForm)
+    Label2: TLabel;
     Panel1: TPanel;     // buddies panel
     Label1: TLabel;     // "տնեցիք"
     Button1: TButton;   // "+" (Add buddy)
@@ -71,6 +72,7 @@ type
     Button3: TButton;   // "ուղարկել" (Send)
 
     lstBuddies: TListBox;
+    Shape1: TShape;
 
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
@@ -560,7 +562,7 @@ begin
   idx := lstBuddies.ItemIndex;
   if idx < 0 then Exit;
 
-  if MessageDlg('Ջնջե՞լ ընտրված տնեցիքին։',
+  if MessageDlg('Ջնջե՞լ ընտրված տնեցուն։',
     mtConfirmation, [mbYes, mbNo], 0) = mrYes then
   begin
     FBuddyManager.RemoveBuddy(idx);
