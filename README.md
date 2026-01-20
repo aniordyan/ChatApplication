@@ -3,6 +3,7 @@
 NetCatGUI is a simple peer-to-peer chat application written in FreePascal (FPC) using Lazarus IDE.  
 It uses pure system sockets without external libraries and supports full IPv6 communication.
 
+*please refer to https://aniordyan.github.io/yggdrasilInfo/ to get ipv6 address*
 
 ## Features
 
